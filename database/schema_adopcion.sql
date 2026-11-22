@@ -563,3 +563,28 @@ VALUES
   false, 'Ideal Apto', 5
 )
 ON CONFLICT (id) DO NOTHING;
+
+
+-- ==========================================================================
+-- 9. PERMISOS DE LECTURA Y EJECUCIÓN PÚBLICA (ROL ANON Y AUTHENTICATED)
+-- ==========================================================================
+-- Necesarios en Supabase / PostgREST para que el cliente público pueda leer
+-- los datos permitidos por las políticas de RLS sin error 401 (permission denied).
+
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+
+-- Permisos de lectura en tablas públicas (gobernadas por RLS)
+GRANT SELECT ON TABLE public.site_settings TO anon, authenticated;
+GRANT SELECT ON TABLE public.donation_settings TO anon, authenticated;
+GRANT SELECT ON TABLE public.pets TO anon, authenticated;
+GRANT SELECT ON TABLE public.media_assets TO anon, authenticated;
+
+-- El baúl de seguridad nunca es accesible directamente por el cliente
+REVOKE ALL ON TABLE public.admin_auth_vault FROM anon, authenticated;
+
+-- Permisos de ejecución en procedimientos seguros (RPC)
+GRANT EXECUTE ON FUNCTION public.get_admin_auth_params() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.verify_admin_pin(TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.verify_and_update_pin(TEXT, TEXT, TEXT, INT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.verify_and_save_all(TEXT, JSONB, JSONB, JSONB) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.verify_and_delete_pet(TEXT, TEXT) TO anon, authenticated;
