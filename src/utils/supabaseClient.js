@@ -1,6 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
 import { INITIAL_DATA } from '../data/initialData.js';
 
+// Polyfill seguro de WebSocket para compilación en Node.js < 22 en Cloudflare CI
+if (typeof globalThis !== 'undefined' && typeof globalThis.WebSocket === 'undefined') {
+  globalThis.WebSocket = class WebSocketPolyfill {
+    constructor() {
+      this.readyState = 3; // CLOSED
+    }
+    addEventListener() {}
+    removeEventListener() {}
+    send() {}
+    close() {}
+  };
+}
+
 const cloudUrl = (typeof import.meta !== 'undefined' && import.meta.env?.PUBLIC_SUPABASE_URL) || '';
 const cloudAnonKey = (typeof import.meta !== 'undefined' && import.meta.env?.PUBLIC_SUPABASE_ANON_KEY) || '';
 
@@ -11,7 +24,17 @@ export const isSupabaseConfigured = Boolean(
 );
 
 export const supabase = isSupabaseConfigured
-  ? createClient(cloudUrl, cloudAnonKey)
+  ? createClient(cloudUrl, cloudAnonKey, {
+      auth: {
+        persistSession: typeof window !== 'undefined',
+        autoRefreshToken: typeof window !== 'undefined'
+      },
+      realtime: {
+        transport: typeof window !== 'undefined' && typeof window.WebSocket !== 'undefined'
+          ? window.WebSocket
+          : globalThis.WebSocket
+      }
+    })
   : null;
 
 /**
